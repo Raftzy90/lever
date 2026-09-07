@@ -3,15 +3,18 @@
 import os
 import re
 import time
+import shutil
+import subprocess
 import requests
 from datetime import datetime
 
-# =========================
+# ============================================================
 # LEVER STALK
-# PUBLIC OSINT ONLY
-# =========================
+# PUBLIC OSINT + DEVICE UTILITY
+# Version 2.0
+# ============================================================
 
-VERSION = "1.0"
+VERSION = "2.0"
 
 RESET = "\033[0m"
 BOLD = "\033[1m"
@@ -25,14 +28,14 @@ WHITE = "\033[97m"
 
 UA = {
     "User-Agent":
-        "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 "
-        "(KHTML, like Gecko) Chrome/120 Mobile Safari/537.36"
+        "Mozilla/5.0 (Linux; Android 10) "
+        "AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36"
 }
 
 
-# =========================
+# ============================================================
 # SCREEN
-# =========================
+# ============================================================
 
 def clear():
     os.system("clear")
@@ -44,6 +47,7 @@ def line():
 
 def loading(text="Loading"):
     chars = ["|", "/", "-", "\\"]
+
     for i in range(12):
         print(
             f"\r{YELLOW}{text} {chars[i % len(chars)]}{RESET}",
@@ -52,12 +56,12 @@ def loading(text="Loading"):
         )
         time.sleep(0.08)
 
-    print("\r" + " " * 35 + "\r", end="")
+    print("\r" + " " * 60 + "\r", end="")
 
 
-# =========================
+# ============================================================
 # LOGO
-# =========================
+# ============================================================
 
 def logo():
     clear()
@@ -78,14 +82,24 @@ def logo():
  ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝   ╚═╝
 """ + RESET)
 
-    print(MAGENTA + "              L E V E R   S T A L K" + RESET)
-    print(YELLOW + "                PUBLIC OSINT TOOL" + RESET)
+    print(
+        MAGENTA +
+        "              L E V E R   S T A L K" +
+        RESET
+    )
+
+    print(
+        YELLOW +
+        "          PUBLIC OSINT + DEVICE TOOL" +
+        RESET
+    )
+
     line()
 
 
-# =========================
+# ============================================================
 # VALIDATION
-# =========================
+# ============================================================
 
 def valid_username(username):
     username = username.strip().lstrip("@")
@@ -102,10 +116,7 @@ def valid_username(username):
     if any(x in username for x in ["/", "\\", " ", "\n", "\r"]):
         return False
 
-    if not re.fullmatch(r"[A-Za-z0-9._-]+", username):
-        return False
-
-    return True
+    return bool(re.fullmatch(r"[A-Za-z0-9._-]+", username))
 
 
 def ask_username():
@@ -117,11 +128,16 @@ def ask_username():
         if valid_username(username):
             return username
 
-        print(RED + "Username tidak valid." + RESET)
+        print(
+            RED +
+            "Username tidak valid." +
+            RESET
+        )
+
         print(
             YELLOW +
-            "Gunakan huruf, angka, titik, _, atau - saja."
-            + RESET
+            "Gunakan huruf, angka, titik, _ atau -." +
+            RESET
         )
 
 
@@ -145,9 +161,9 @@ def ask_id(label):
         print(RED + "Format ID tidak valid." + RESET)
 
 
-# =========================
+# ============================================================
 # PUBLIC URL CHECK
-# =========================
+# ============================================================
 
 def check_public_page(url):
     try:
@@ -173,48 +189,68 @@ def check_public_page(url):
         }
 
 
-# =========================
+# ============================================================
 # REPORT
-# =========================
+# ============================================================
 
 def save_report(category, target, results):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
+    safe_category = re.sub(
+        r"[^A-Za-z0-9_-]",
+        "_",
+        category.lower()
+    )
+
     filename = (
-        f"lever_stalk_{category.lower().replace(' ', '_')}"
-        f"_{timestamp}.txt"
+        f"lever_stalk_{safe_category}_"
+        f"{timestamp}.txt"
     )
 
     with open(filename, "w", encoding="utf-8") as f:
-        f.write("============================================\n")
+
+        f.write("=" * 44 + "\n")
         f.write("             LEVER STALK REPORT\n")
-        f.write("============================================\n")
+        f.write("=" * 44 + "\n")
+
         f.write(f"Category : {category}\n")
         f.write(f"Target   : {target}\n")
+
         f.write(
-            f"Time     : "
-            f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+            "Time     : " +
+            datetime.now().strftime(
+                "%Y-%m-%d %H:%M:%S"
+            ) +
+            "\n"
         )
-        f.write("--------------------------------------------\n")
+
+        f.write("-" * 44 + "\n")
 
         for key, value in results.items():
             f.write(f"{key}: {value}\n")
 
-        f.write("--------------------------------------------\n")
+        f.write("-" * 44 + "\n")
         f.write("PUBLIC INFORMATION ONLY\n")
-        f.write("============================================\n")
+        f.write("=" * 44 + "\n")
 
     return filename
 
 
-# =========================
+# ============================================================
 # SOCIAL STALK
-# =========================
+# ============================================================
 
 def social_stalk(platform, base_url):
+
     logo()
 
-    print(BOLD + MAGENTA + f"[ STALK {platform.upper()} ]" + RESET)
+    print(
+        BOLD +
+        MAGENTA +
+        f"[ STALK {platform.upper()} ]" +
+        RESET
+    )
+
     line()
 
     username = ask_username()
@@ -229,18 +265,40 @@ def social_stalk(platform, base_url):
     print()
 
     if result["available"]:
-        print(GREEN + "[+] HALAMAN PUBLIK DITEMUKAN" + RESET)
+
+        print(
+            GREEN +
+            "[+] HALAMAN PUBLIK DITEMUKAN" +
+            RESET
+        )
+
     else:
+
         print(
             YELLOW +
-            "[-] Halaman tidak dapat dikonfirmasi"
-            + RESET
+            "[-] Halaman tidak dapat dikonfirmasi" +
+            RESET
         )
 
     print()
-    print(CYAN + "Username :" + WHITE, username)
-    print(CYAN + "URL      :" + WHITE, url)
-    print(CYAN + "HTTP     :" + WHITE, result["status"])
+
+    print(
+        CYAN + "Username :" +
+        WHITE,
+        username
+    )
+
+    print(
+        CYAN + "URL      :" +
+        WHITE,
+        url
+    )
+
+    print(
+        CYAN + "HTTP     :" +
+        WHITE,
+        result["status"]
+    )
 
     results = {
         "Platform": platform,
@@ -250,10 +308,20 @@ def social_stalk(platform, base_url):
         "Accessible": result["available"]
     }
 
-    filename = save_report(platform, username, results)
+    filename = save_report(
+        platform,
+        username,
+        results
+    )
 
     print()
-    print(GREEN + "[+] Report tersimpan:" + RESET)
+
+    print(
+        GREEN +
+        "[+] Report tersimpan:" +
+        RESET
+    )
+
     print(WHITE + filename)
 
     input(
@@ -261,25 +329,48 @@ def social_stalk(platform, base_url):
     )
 
 
-# =========================
+# ============================================================
 # GAME STALK
-# =========================
+# ============================================================
 
 def game_stalk(game):
+
     logo()
 
-    print(BOLD + MAGENTA + f"[ STALK {game.upper()} ]" + RESET)
+    print(
+        BOLD +
+        MAGENTA +
+        f"[ STALK {game.upper()} ]" +
+        RESET
+    )
+
     line()
 
     game_id = ask_id("Masukkan UID / ID publik")
 
     print()
+
     loading("Memproses ID")
 
     print()
-    print(GREEN + "[+] ID diterima" + RESET)
-    print(CYAN + "Game :" + WHITE, game)
-    print(CYAN + "ID   :" + WHITE, game_id)
+
+    print(
+        GREEN +
+        "[+] ID diterima" +
+        RESET
+    )
+
+    print(
+        CYAN + "Game :" +
+        WHITE,
+        game
+    )
+
+    print(
+        CYAN + "ID   :" +
+        WHITE,
+        game_id
+    )
 
     results = {
         "Game": game,
@@ -289,10 +380,20 @@ def game_stalk(game):
             "Tidak mengakses database privat."
     }
 
-    filename = save_report(game, game_id, results)
+    filename = save_report(
+        game,
+        game_id,
+        results
+    )
 
     print()
-    print(GREEN + "[+] Report tersimpan:" + RESET)
+
+    print(
+        GREEN +
+        "[+] Report tersimpan:" +
+        RESET
+    )
+
     print(WHITE + filename)
 
     input(
@@ -300,153 +401,128 @@ def game_stalk(game):
     )
 
 
-# =========================
-# ABOUT
-# =========================
+# ============================================================
+# WHATSAPP PUBLIC PROFILE
+# ============================================================
 
-def about():
+def whatsapp_stalk():
+
     logo()
 
-    print(BOLD + MAGENTA + "[ ABOUT LEVER STALK ]" + RESET)
-    line()
-
-    print(WHITE + """
-LEVER STALK adalah tool OSINT sederhana untuk
-mencari dan memeriksa informasi yang tersedia
-secara publik.
-
-Fitur:
-  • Instagram
-  • TikTok
-  • Twitter
-  • Facebook
-  • X
-  • Free Fire
-  • Mobile Legends
-  • FC Mobile
-  • Magic Chess
-
-Tool ini TIDAK:
-  • mengambil password
-  • mencuri cookie/token
-  • membobol akun
-  • membaca DM
-  • melacak lokasi pribadi
-  • mengakses database privat
-  • melewati login
-""" + RESET)
-
-    print(YELLOW + "Version: " + VERSION + RESET)
-
-    input(
-        f"\n{YELLOW}Tekan ENTER untuk kembali...{RESET}"
+    print(
+        BOLD +
+        MAGENTA +
+        "[ WHATSAPP PUBLIC PROFILE ]" +
+        RESET
     )
 
+    line()
 
-# =========================
-# MAIN MENU
-# =========================
+    phone = input(
+        f"{CYAN}Masukkan nomor WhatsApp (+62...): {WHITE}"
+    ).strip()
 
-def menu():
-    while True:
+    phone_clean = re.sub(
+        r"[^\d+]",
+        "",
+        phone
+    )
 
-        logo()
+    if not phone_clean:
 
-        print(BOLD + WHITE + "[ MENU UTAMA ]" + RESET)
-        line()
-
-        print(f"{GREEN}[1]{RESET} STALK INSTAGRAM")
-        print(f"{CYAN}[2]{RESET} STALK TIKTOK")
-        print(f"{MAGENTA}[3]{RESET} STALK TWITTER")
-        print(f"{YELLOW}[4]{RESET} STALK FACEBOOK")
-        print(f"{BLUE}[5]{RESET} STALK X")
-        print(f"{GREEN}[6]{RESET} STALK FREE FIRE")
-        print(f"{CYAN}[7]{RESET} STALK MOBILE LEGENDS")
-        print(f"{MAGENTA}[8]{RESET} STALK FC MOBILE")
-        print(f"{YELLOW}[9]{RESET} STALK MAGIC CHESS")
-        print(f"{WHITE}[10]{RESET} ABOUT")
-        print(f"{RED}[0]{RESET} EXIT")
-
-        line()
-
-        choice = input(
-            f"{BOLD}{CYAN}LEVER-STALK > {WHITE}"
-        ).strip()
-
-        if choice == "1":
-            social_stalk(
-                "Instagram",
-                "https://www.instagram.com/"
-            )
-
-        elif choice == "2":
-            social_stalk(
-                "TikTok",
-                "https://www.tiktok.com/@"
-            )
-
-        elif choice == "3":
-            social_stalk(
-                "Twitter",
-                "https://twitter.com/"
-            )
-
-        elif choice == "4":
-            social_stalk(
-                "Facebook",
-                "https://www.facebook.com/"
-            )
-
-        elif choice == "5":
-            social_stalk(
-                "X",
-                "https://x.com/"
-            )
-
-        elif choice == "6":
-            game_stalk("Free Fire")
-
-        elif choice == "7":
-            game_stalk("Mobile Legends")
-
-        elif choice == "8":
-            game_stalk("FC Mobile")
-
-        elif choice == "9":
-            game_stalk("Magic Chess")
-
-        elif choice == "10":
-            about()
-
-        elif choice == "0":
-            clear()
-            print(
-                GREEN +
-                "\nTerima kasih telah menggunakan LEVER STALK.\n"
-                + RESET
-            )
-            break
-
-        else:
-            print(
-                RED +
-                "\nPilihan tidak tersedia!"
-                + RESET
-            )
-            time.sleep(1)
-
-
-# =========================
-# START
-# =========================
-
-if __name__ == "__main__":
-    try:
-        menu()
-    except KeyboardInterrupt:
-        clear()
         print(
-            YELLOW +
-            "\nProgram dihentikan.\n" +
+            RED +
+            "Nomor tidak valid." +
             RESET
         )
+
+        input(
+            f"\n{YELLOW}Tekan ENTER...{RESET}"
+        )
+
+        return
+
+    if phone_clean.startswith("+"):
+        wa_number = phone_clean[1:]
+    else:
+        wa_number = phone_clean
+
+    if len(wa_number) < 8:
+
+        print(
+            RED +
+            "Nomor terlalu pendek." +
+            RESET
+        )
+
+        input(
+            f"\n{YELLOW}Tekan ENTER...{RESET}"
+        )
+
+        return
+
+    url = f"https://wa.me/{wa_number}"
+
+    print()
+
+    loading(
+        "Memeriksa WhatsApp public link"
+    )
+
+    result = check_public_page(url)
+
+    print()
+
+    print(
+        CYAN +
+        "Nomor :" +
+        WHITE,
+        phone_clean
+    )
+
+    print(
+        CYAN +
+        "URL   :" +
+        WHITE,
+        url
+    )
+
+    print(
+        CYAN +
+        "HTTP  :" +
+        WHITE,
+        result["status"]
+    )
+
+    print()
+
+    if result["available"]:
+
+        print(
+            GREEN +
+            "[+] LINK WHATSAPP DAPAT DIAKSES" +
+            RESET
+        )
+
+    else:
+
+        print(
+            YELLOW +
+            "[-] Link tidak dapat dikonfirmasi." +
+            RESET
+        )
+
+    print()
+
+    print(
+        YELLOW +
+        "Catatan: fitur ini hanya memeriksa "
+        "tautan WhatsApp publik."
+        + RESET
+    )
+
+    print(
+        YELLOW +
+        "Tidak mengambil chat, password, lokasi, "
+        "status, atau data privat."
+       
